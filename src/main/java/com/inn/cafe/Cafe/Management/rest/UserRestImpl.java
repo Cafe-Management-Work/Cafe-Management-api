@@ -36,7 +36,6 @@ public class UserRestImpl  {
         return  ResponseEntity.ok(userService.updateStatus(statusUpdateRequest));
     }
 
-
     @GetMapping("/get")
     public ResponseEntity<List<UserResponse>> getUsers(){
         return ResponseEntity.ok(userService.getUsers());

@@ -1,4 +1,4 @@
-name: CI/CD Pipeline to EC2
+name: CI/CD Pipeline - Cafe Management API
 
 on:
   push:
@@ -11,52 +11,51 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: 'gradle'
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
 
-    - name: Build Jar with Gradle
-      run: ./gradlew bootJar -x test
+      - name: Build Jar
+        run: ./gradlew clean bootJar -x test
 
-    - name: Log in to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-    - name: Build and Push Docker Image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: true
-        tags: sandeep9490/cafe-management-api:latest
+      - name: Build Docker Image
+        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/cafe-management-api:latest .
 
-    - name: Deploy to EC2 via SSH
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ubuntu
-        key: ${{ secrets.EC2_SSH_KEY }}
-        script: |
-          docker pull sandeep9490/cafe-management-api:latest
-          docker stop cafe-management-container || true
-          docker rm cafe-management-container || true
-          docker run -d \
-            --name cafe-management-container \
-            -p 8080:8080 \
-            -e RDS_HOST="${{ secrets.RDS_HOST }}" \
-            -e RDS_USERNAME="${{ secrets.RDS_USERNAME }}" \
-            -e RDS_PASSWORD="${{ secrets.RDS_PASSWORD }}" \
-            -e MAIL_USERNAME="${{ secrets.MAIL_USERNAME }}" \
-            -e MAIL_PASSWORD="${{ secrets.MAIL_PASSWORD }}" \
-            sandeep9490/cafe-management-api:latest
+      - name: Push Image to Docker Hub
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/cafe-management-api:latest
+
+      - name: SSH and Deploy to EC2
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/cafe-management-api:latest
+            sudo docker stop cafe-management-container || true
+            sudo docker rm cafe-management-container || true
+            sudo docker run -d \
+              --name cafe-management-container \
+              -p 8080:8080 \
+              -e RDS_HOST="${{ secrets.RDS_HOST }}" \
+              -e RDS_USERNAME="${{ secrets.RDS_USERNAME }}" \
+              -e RDS_PASSWORD="${{ secrets.RDS_PASSWORD }}" \
+              -e MAIL_USERNAME="${{ secrets.MAIL_USERNAME }}" \
+              -e MAIL_PASSWORD="${{ secrets.MAIL_PASSWORD }}" \
+              ${{ secrets.DOCKER_USERNAME }}/cafe-management-api:latest

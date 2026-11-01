@@ -66,8 +66,8 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Allow both localhost (port 80) and localhost:4200
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost", "http://localhost:4200"));
+        // Allow local testing origins and your live EC2 frontend URL
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost", "http://localhost:4200", "http://184.72.75.154"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept"));
         configuration.setAllowCredentials(true);

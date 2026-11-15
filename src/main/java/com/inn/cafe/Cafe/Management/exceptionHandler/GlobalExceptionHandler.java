@@ -46,10 +46,17 @@ public class GlobalExceptionHandler {
         return build(ex.getMessage(), HttpStatus.UNAUTHORIZED);
     }
 
+
     @ExceptionHandler(UserNotExists.class)
     public ResponseEntity<Map<String, String>> handleUserNotExists(
             UserNotExists ex) {
         return build(ExceptionConstants.USER_NOT_FOUND, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(InvalidEmailException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidEmail(
+            InvalidEmailException ex) {
+        return build(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(PasswordException.class)

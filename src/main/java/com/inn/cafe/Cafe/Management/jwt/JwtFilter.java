@@ -37,7 +37,9 @@ public class JwtFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         // Public endpoints that don't need authentication
-        if (request.getServletPath().matches("/user/login|/user/forgotPassword|/user/signup")) {
+        if (request.getServletPath().matches("/user/login|/user/forgotPassword|/user/signup|/user/sendOtp|/user/verifyOtp")) {
+
+
             filterChain.doFilter(request, response);
             return;
         }

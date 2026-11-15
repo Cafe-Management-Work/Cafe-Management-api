@@ -9,6 +9,7 @@ import com.inn.cafe.Cafe.Management.jwt.CustomerUsersDetailsService;
 import com.inn.cafe.Cafe.Management.jwt.JwtFilter;
 import com.inn.cafe.Cafe.Management.jwt.JwtUtil;
 import com.inn.cafe.Cafe.Management.pojo.User;
+import com.inn.cafe.Cafe.Management.service.OtpService;
 import com.inn.cafe.Cafe.Management.service.UserService;
 import com.inn.cafe.Cafe.Management.utils.EmailUtils;
 import jakarta.mail.MessagingException;
@@ -45,10 +46,18 @@ public class UserSeviceImpl implements UserService {
     @Autowired
     private EmailUtils emailUtils;
 
+    @Autowired
+    private OtpService otpService;
+
     // ---------------- CREATE USER ----------------
     @Override
     @Transactional
     public String createUser(UserRequestDTO dto) {
+
+        boolean isOtpValid = otpService.verifyOtp(dto.email(), dto.otp());
+        if (!isOtpValid) {
+            throw new InvalidEmailException("Invalid or expired OTP. Please check your code.");
+        }
 
         if (userDao.existsByEmail(dto.email())) {
             throw new EmailAlreadyExistsException(

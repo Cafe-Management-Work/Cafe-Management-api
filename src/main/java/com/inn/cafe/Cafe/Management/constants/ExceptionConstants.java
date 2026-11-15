@@ -37,6 +37,8 @@ public final class ExceptionConstants {
 
     public static final String UUID_MISSING ="Please enter UUID";
 
+    public static final String INVALID_EMAIL = "Please provide a valid email address.";
+
     private ExceptionConstants() {
         // prevent instantiation
     }

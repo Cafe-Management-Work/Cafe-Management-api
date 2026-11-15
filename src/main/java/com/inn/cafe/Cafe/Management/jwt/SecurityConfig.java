@@ -52,7 +52,8 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/user/login", "/user/signup", "/user/forgotPassword").permitAll()
+                        .requestMatchers("/user/login", "/user/signup", "/user/forgotPassword",
+                                "/user/sendOtp","/user/verifyOtp").permitAll()
                         .anyRequest().authenticated()
                 )
                 // 🚨 THE CRITICAL MISSING LINK: Add your custom JWT Filter here!

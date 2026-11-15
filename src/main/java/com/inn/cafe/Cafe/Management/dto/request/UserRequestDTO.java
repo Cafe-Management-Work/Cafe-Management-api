@@ -20,5 +20,10 @@ public record UserRequestDTO(
         String password,
 
         @NotBlank(message = "Role is mandatory")
-        String role
+        String role,
+
+        @NotBlank(message = "OTP is mandatory")
+        @Pattern(regexp = "^\\d{6}$", message = "OTP must be exactly 6 digits")
+        String otp
+
 ) {}

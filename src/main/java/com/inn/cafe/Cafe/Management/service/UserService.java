@@ -12,6 +12,8 @@ public interface UserService {
 
     String login(AuthenticationDto authenticationDto);
 
+    String deleteUser(Integer id);
+
     List<UserResponse> getUsers();
 
     String updateStatus(StatusUpdateRequest statusUpdateRequest);

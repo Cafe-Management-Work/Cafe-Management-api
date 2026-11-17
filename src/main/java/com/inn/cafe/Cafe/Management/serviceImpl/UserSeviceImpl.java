@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ObjectUtils;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -109,6 +110,17 @@ public class UserSeviceImpl implements UserService {
         } catch (UsernameNotFoundException ex) {
             throw new UserNotExists(CafeConstants.USER_NOT_FOUND);
         }
+    }
+
+    @Override
+    public String deleteUser(Integer id) {
+        Optional<User> user = userDao.findById(id);
+        if(!user.isPresent()){
+
+            throw new UserNotExists(CafeConstants.USER_NOT_FOUND);
+        }
+        userDao.deleteById(id);
+        return String.format("%s deleted successfully",user.get().getName()) ;
     }
 
     // ---------------- GET USERS ----------------

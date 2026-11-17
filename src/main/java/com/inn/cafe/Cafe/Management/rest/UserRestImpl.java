@@ -59,5 +59,10 @@ public class UserRestImpl  {
            return ResponseEntity.ok(userService.forgotPassword(forgotPassword));
     }
 
+    @PostMapping("/delete/{id}")
+    public ResponseEntity<String> deleteUser(@PathVariable Integer id)
+    {
+        return ResponseEntity.ok(userService.deleteUser(id));
+    }
 
 }

@@ -37,3 +37,7 @@ spring:
   web:
     resources:
       add-mappings: false
+
+cafe:
+  reports:
+    dir: C:/Users/91994/OneDrive/Desktop/Cafe Management/CafeReports

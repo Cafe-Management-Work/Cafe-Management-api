@@ -12,24 +12,31 @@ import com.inn.cafe.Cafe.Management.pojo.Bill;
 import com.inn.cafe.Cafe.Management.service.BillService;
 import com.inn.cafe.Cafe.Management.utils.CafeUtils;
 import com.itextpdf.kernel.colors.Color;
-import com.itextpdf.kernel.colors.DeviceRgb; // Import DeviceRgb
+import com.itextpdf.kernel.colors.DeviceRgb;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.Cell;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
 import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.properties.UnitValue;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StreamUtils;
 import org.springframework.util.StringUtils;
 
-import java.io.*;
-import java.nio.file.FileSystems;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -41,55 +48,47 @@ public class BillServiceImpl implements BillService {
     @Autowired
     BillDao billDao;
 
+    @Value("${cafe.reports.dir:CafeReports}")
+    private String reportsDir;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    private static final String REPORT_BASE_DIR = "C:" + FileSystems.getDefault().getSeparator() +
-            "Users" + FileSystems.getDefault().getSeparator() +
-            "91994" + FileSystems.getDefault().getSeparator() +
-            "OneDrive" + FileSystems.getDefault().getSeparator() +
-            "Desktop" + FileSystems.getDefault().getSeparator() +
-            "Cafe Management" + FileSystems.getDefault().getSeparator() +
-            "CafeReports" + FileSystems.getDefault().getSeparator();
+    private Path getPdfPath(String uuid) {
+        return Path.of(reportsDir, uuid + ".pdf");
+    }
 
     @Override
     public byte[] getPdf(BillGenerateRequest billGenerateRequest) throws IOException {
-        log.info("Pdf Generation Report : billGenerateRequest {}",billGenerateRequest);
-        byte[] byteArray = new byte[0];
-        if(!StringUtils.hasText(billGenerateRequest.getUuid())){
+        log.info("Pdf Generation Report : billGenerateRequest {}", billGenerateRequest);
+        if (!StringUtils.hasText(billGenerateRequest.getUuid())) {
             throw new PdfValidationException(ExceptionConstants.UUID_MISSING);
         }
-        String filePath = REPORT_BASE_DIR +"\\"+billGenerateRequest.getUuid()+".pdf";
-        if(CafeUtils.isFileEists(filePath)){
-            byteArray = getByteArray(filePath);
-            return byteArray;
-        }
-        else{
+
+        Path pdfPath = getPdfPath(billGenerateRequest.getUuid());
+        if (Files.exists(pdfPath)) {
+            return getByteArray(pdfPath);
+        } else {
             billGenerateRequest.setIsGenerate(false);
             generateReport(billGenerateRequest);
-            byteArray = getByteArray(filePath);
-            return byteArray;
+            return getByteArray(pdfPath);
         }
     }
 
     @Override
     public String deleteBill(Integer id) {
-
         Optional<Bill> bill = billDao.findById(id);
-        if(bill.isPresent()){
+        if (bill.isPresent()) {
             billDao.deleteById(id);
-            return String.format(CafeConstants.BILL_DELETED,id);
-        }else{
-            return String.format(CafeConstants.BILL_NOT_FOUND,id);
+            return String.format(CafeConstants.BILL_DELETED, id);
+        } else {
+            return String.format(CafeConstants.BILL_NOT_FOUND, id);
         }
-
     }
 
-    private byte[] getByteArray(String filePath) throws IOException {
-        File fileInitialization = new File(filePath);
-        InputStream inputStream = new FileInputStream(fileInitialization);
-        byte[] bytes = StreamUtils.copyToByteArray(inputStream);
-        inputStream.close();
-        return bytes;
+    private byte[] getByteArray(Path pdfPath) throws IOException {
+        try (InputStream inputStream = Files.newInputStream(pdfPath)) {
+            return StreamUtils.copyToByteArray(inputStream);
+        }
     }
 
     @Override
@@ -98,7 +97,7 @@ public class BillServiceImpl implements BillService {
 
         String fileName;
 
-        if (!billGenerateRequest.getIsGenerate() && StringUtils.hasText(billGenerateRequest.getUuid())) {
+        if (Boolean.FALSE.equals(billGenerateRequest.getIsGenerate()) && StringUtils.hasText(billGenerateRequest.getUuid())) {
             fileName = billGenerateRequest.getUuid();
         } else {
             fileName = CafeUtils.getUUID();
@@ -111,17 +110,18 @@ public class BillServiceImpl implements BillService {
         return fileName;
     }
 
-
     private void generatePdf(BillGenerateRequest request, String fileName) {
-        Path fullPath = Path.of(REPORT_BASE_DIR, fileName + ".pdf");
-        String destination = fullPath.toString();
+        Path fullPath = getPdfPath(fileName);
 
         try {
-            PdfWriter writer = new PdfWriter(destination);
+            if (fullPath.getParent() != null) {
+                Files.createDirectories(fullPath.getParent());
+            }
+
+            PdfWriter writer = new PdfWriter(fullPath.toString());
             PdfDocument pdfDoc = new PdfDocument(writer);
             Document document = new Document(pdfDoc);
 
-            // ... (Title and Customer details paragraphs remain the same) ...
             document.add(new Paragraph("Cafe Management System")
                     .setTextAlignment(TextAlignment.CENTER).setBold().setFontSize(20));
             document.add(new Paragraph("\n"));
@@ -131,14 +131,11 @@ public class BillServiceImpl implements BillService {
             document.add(new Paragraph("Payment Method: " + request.getPaymentMethod()));
             document.add(new Paragraph("\n"));
 
-
-            // Product Table
             List<Map<String, Object>> items = parseProductDetailsJson(request.getProductDetails());
 
             Table table = new Table(UnitValue.createPercentArray(new float[]{30, 25, 15, 15, 15}));
             table.setWidth(UnitValue.createPercentValue(100));
 
-            // Use the corrected helper method
             addTableHeader(table, "Name", "#FFC000");
             addTableHeader(table, "Category", "#FFC000");
             addTableHeader(table, "Quantity", "#FFC000");
@@ -155,7 +152,6 @@ public class BillServiceImpl implements BillService {
 
             document.add(table);
 
-            // ... (Total and Thank You paragraphs remain the same) ...
             document.add(new Paragraph("\nTotal : " + request.getTotal())
                     .setBold()
                     .setTextAlignment(TextAlignment.RIGHT));
@@ -164,28 +160,26 @@ public class BillServiceImpl implements BillService {
                     .setTextAlignment(TextAlignment.CENTER));
 
             document.close();
-            log.info("PDF generated successfully at: {}", destination);
+            log.info("PDF generated successfully at: {}", fullPath);
 
-        } catch (FileNotFoundException e) {
-            log.error("Error generating PDF: File path not found: {}", destination, e);
+        } catch (IOException e) {
+            log.error("Error generating PDF at path: {}", fullPath, e);
+            throw new RuntimeException("Failed to generate PDF report", e);
         }
     }
 
-    // Helper method to create formatted table headers (FIXED)
     private void addTableHeader(Table table, String headerText, String hexColor) {
-        // Use DeviceRgb directly with integer representation of RGB components
         Color color = new DeviceRgb(
-                Integer.valueOf(hexColor.substring(1, 3), 16), // R
-                Integer.valueOf(hexColor.substring(3, 5), 16), // G
-                Integer.valueOf(hexColor.substring(5, 7), 16)  // B
+                Integer.parseInt(hexColor.substring(1, 3), 16),
+                Integer.parseInt(hexColor.substring(3, 5), 16),
+                Integer.parseInt(hexColor.substring(5, 7), 16)
         );
 
-        table.addCell(new com.itextpdf.layout.element.Cell()
+        table.addCell(new Cell()
                 .add(new Paragraph(headerText).setBold())
                 .setBackgroundColor(color)
                 .setTextAlignment(TextAlignment.CENTER));
     }
-
 
     private List<Map<String, Object>> parseProductDetailsJson(String jsonString) {
         if (!StringUtils.hasText(jsonString)) {
@@ -200,7 +194,7 @@ public class BillServiceImpl implements BillService {
     }
 
     private void insertBill(BillGenerateRequest billGenerateRequest) {
-        log.info("Bill Generate Request :{}",billGenerateRequest);
+        log.info("Bill Generate Request :{}", billGenerateRequest);
         Bill bill = new Bill();
         bill.setUuid(billGenerateRequest.getUuid());
         bill.setName(billGenerateRequest.getName());
@@ -216,15 +210,11 @@ public class BillServiceImpl implements BillService {
     @Override
     public List<Bill> getAllBills() {
         List<Bill> billList = new ArrayList<>();
-        if(jwtFilter.isAdmin()){
+        if (jwtFilter.isAdmin()) {
             billList = billDao.getAllBills();
-        }
-        else{
-
+        } else {
             billList = billDao.getBillByUsername(jwtFilter.getCurrentUser());
         }
         return billList;
     }
-
-
 }
